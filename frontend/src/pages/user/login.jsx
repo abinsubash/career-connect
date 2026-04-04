@@ -46,7 +46,7 @@ export default function LoginPage() {
             <BriefcaseIcon />
           </div>
           <span className="text-lg font-bold text-slate-800 tracking-tight">
-            Carrer<span className="text-blue-600">Connect</span>
+            Career<span className="text-blue-600">Connect</span>
           </span>
         </div>
         <div className="hidden sm:flex items-center gap-5 text-sm text-slate-500">
