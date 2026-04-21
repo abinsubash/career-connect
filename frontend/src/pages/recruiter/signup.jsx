@@ -1,6 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  authStarting,
+  signupSuccess,
+  authError,
+  clearError,
+} from "../../redux/authSlice";
+import { authAPI } from "../../api/authAPI";
 
 // ── Inline global styles ─────────────────────────────────────────────────────
 const GlobalStyle = () => (
@@ -14,6 +21,8 @@ const GlobalStyle = () => (
     .input-field { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:12px 16px; color:#f1f5f9; font-size:14px; outline:none; transition:all .2s; font-family:'DM Sans',sans-serif; }
     .input-field:focus { border-color:#38bdf8; background:rgba(56,189,248,0.05); box-shadow:0 0 0 3px rgba(56,189,248,0.1); }
     .input-field::placeholder { color:#475569; }
+    .input-field.error { border-color:#ef4444 !important; background:rgba(239,68,68,0.05) !important; }
+    .input-field.error:focus { box-shadow:0 0 0 3px rgba(239,68,68,0.1) !important; }
     select.input-field option { background:#0f172a; color:#f1f5f9; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     .fu  { animation:fadeUp .45s ease forwards; }
@@ -28,6 +37,8 @@ const GlobalStyle = () => (
     .panel-dots { background-image:radial-gradient(rgba(255,255,255,0.06) 1px,transparent 1px); background-size:22px 22px; }
     ::-webkit-scrollbar { width:4px; }
     ::-webkit-scrollbar-thumb { background:#1e293b; border-radius:4px; }
+    .error-text { color:#ef4444; font-size:12px; margin-top:6px; display:flex; align-items:center; gap:6px; }
+    .error-icon { width:14px; height:14px; flex-shrink:0; }
 
     @media (max-width: 1023px) {
       #left-panel-signup { display: none !important; }
@@ -39,33 +50,6 @@ const GlobalStyle = () => (
   `}</style>
 );
 
-const next = async (e) => {
-  e.preventDefault();
-  if (step < 2) {
-    setStep(step + 1);
-    return;
-  }
-  // Final step — submit
-  setBusy(true);
-  try {
-    await axios.post("http://127.0.0.1:5000/api/auth/recruiter/signup", {
-      name:       f.name,
-      email:      f.email,
-      password:   f.password,
-      company:    f.company,
-      website:    f.website,
-      size:       f.size,
-      role:       f.role,
-      department: f.department,
-    });
-    navigate("/recruiter/home");
-  } catch (err) {
-    const msg = err?.response?.data?.message || "Signup failed. Please try again.";
-    alert(msg);
-  } finally {
-    setBusy(false);
-  }
-};
 // ── Icons & Logo ─────────────────────────────────────────────────────────────
 const EyeOffSm = () => (
   <svg style={{ width:20, height:20 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -85,6 +69,13 @@ const CheckIcon = () => (
     <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
+const ErrorIcon = () => (
+  <svg className="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
 const Logo = () => (
   <div style={{ display:"flex", alignItems:"center" }}>
     <span className="syne" style={{ fontWeight:800, fontSize:"1.25rem", background:"linear-gradient(135deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>NexWork</span>
@@ -100,25 +91,147 @@ const Spinner = () => (
 // ── Step labels ───────────────────────────────────────────────────────────────
 const STEPS = ["Account", "Company", "Role"];
 
+// ── Validation rules ───────────────────────────────────────────────────────────
+const validateField = (name, value) => {
+  switch (name) {
+    case "name":
+      if (!value.trim()) return "Full name is required";
+      if (value.trim().length < 2) return "Full name must be at least 2 characters";
+      if (value.trim().length > 100) return "Full name must not exceed 100 characters";
+      return "";
+    
+    case "email":
+      if (!value.trim()) return "Email is required";
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) return "Please enter a valid email address";
+      return "";
+    
+    case "password":
+      if (!value) return "Password is required";
+      if (value.length < 8) return "Password must be at least 8 characters";
+      if (value.length > 128) return "Password must not exceed 128 characters";
+      if (!/[A-Z]/.test(value)) return "Password must contain at least one uppercase letter";
+      if (!/[a-z]/.test(value)) return "Password must contain at least one lowercase letter";
+      if (!/[0-9]/.test(value)) return "Password must contain at least one number";
+      return "";
+    
+    case "company":
+      if (!value.trim()) return "Company name is required";
+      if (value.trim().length < 2) return "Company name must be at least 2 characters";
+      if (value.trim().length > 100) return "Company name must not exceed 100 characters";
+      return "";
+    
+    case "website":
+      if (value.trim() && !isValidUrl(value)) return "Please enter a valid website URL";
+      return "";
+    
+    case "size":
+      if (!value) return "Company size is required";
+      return "";
+    
+    case "role":
+      if (!value.trim()) return "Job title is required";
+      if (value.trim().length < 2) return "Job title must be at least 2 characters";
+      if (value.trim().length > 100) return "Job title must not exceed 100 characters";
+      return "";
+    
+    case "department":
+      if (!value) return "Department is required";
+      return "";
+    
+    default:
+      return "";
+  }
+};
+
+const isValidUrl = (string) => {
+  try {
+    new URL(string.startsWith("http") ? string : `https://${string}`);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function SignupPage_recruiter({ go }) {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isAuthenticating, error } = useSelector((state) => state.auth);
+
   const [step, setStep] = useState(0);
   const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [f, setF] = useState({ name:"", email:"", password:"", company:"", website:"", size:"", role:"", department:"" });
-  const set = e => setF({ ...f, [e.target.name]: e.target.value });
-  const navigate = useNavigate();
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
+  // Handle field change
+  const set = e => {
+    const { name, value } = e.target;
+    setF({ ...f, [name]: value });
+    // Clear error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors({ ...fieldErrors, [name]: "" });
+    }
+    if (error) {
+      dispatch(clearError());
+    }
+  };
+
+  // Handle field blur for validation
+  const handleBlur = e => {
+    const { name, value } = e.target;
+    setTouched({ ...touched, [name]: true });
+    const error = validateField(name, value);
+    if (error) {
+      setFieldErrors({ ...fieldErrors, [name]: error });
+    }
+  };
+
+  // Validate all fields in current step
+  const validateStep = () => {
+    let stepFields = [];
+    if (step === 0) stepFields = ["name", "email", "password"];
+    else if (step === 1) stepFields = ["company", "size"];
+    else if (step === 2) stepFields = ["role", "department"];
+
+    const newErrors = {};
+    let isValid = true;
+
+    stepFields.forEach(field => {
+      const error = validateField(field, f[field]);
+      if (error) {
+        newErrors[field] = error;
+        isValid = false;
+      }
+    });
+
+    setFieldErrors({ ...fieldErrors, ...newErrors });
+    stepFields.forEach(field => setTouched(prev => ({ ...prev, [field]: true })));
+    return isValid;
+  };
+
+  // Handle next/submit
   const next = async (e) => {
-     e.preventDefault();
+    e.preventDefault();
+
+    // Validate current step
+    if (!validateStep()) {
+      return;
+    }
+
+    // Move to next step or submit
     if (step < 2) {
       setStep(step + 1);
       return;
     }
-    setBusy(true);
+
+    // Final step - submit
+    dispatch(authStarting());
     try {
-      await axios.post("http://127.0.0.1:5000/api/auth/recruiter/signup", {
+      const response = await authAPI.recruiterSignup({
         name:       f.name,
         email:      f.email,
         password:   f.password,
@@ -128,15 +241,32 @@ export function SignupPage_recruiter({ go }) {
         role:       f.role,
         department: f.department,
       });
+
+      const token = response.token;
+      const recruiter = response.recruiter;
+      
+      // ✅ Save to localStorage BEFORE navigating or dispatching
+      // This ensures axios interceptor can find the token immediately
+      if (token && recruiter) {
+        localStorage.setItem("recruiter_auth", JSON.stringify({ recruiter, token }));
+        localStorage.setItem("token", token);
+      }
+
+      // Now dispatch to Redux
+      dispatch(
+        signupSuccess({
+          recruiter: recruiter,
+          token: token || "jwt-token",
+        })
+      );
+
+      // Navigate
       navigate("/recruiter/home");
     } catch (err) {
-      const msg = err?.response?.data?.message || "Signup failed. Please try again.";
-      alert(msg);
-    } finally {
-      setBusy(false);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || "Signup failed. Please try again.";
+      dispatch(authError(msg));
     }
   };
-
 
   const pwStrength = f.password.length < 4 ? "Weak" : f.password.length < 8 ? "Fair" : "Strong";
   const pwColor    = f.password.length < 4 ? "#ef4444" : f.password.length < 8 ? "#f59e0b" : "#38bdf8";
@@ -263,6 +393,16 @@ export function SignupPage_recruiter({ go }) {
               </div>
             </div>
 
+            {/* ── API Error Alert ───────────────────────────────────────────────────── */}
+            {error && (
+              <div className="fu1" style={{ background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:"12px", padding:"12px 16px", marginBottom:"16px" }}>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:"12px" }}>
+                  <ErrorIcon />
+                  <p style={{ color:"#fca5a5", fontSize:"14px", lineHeight:1.5 }}>{error}</p>
+                </div>
+              </div>
+            )}
+
             {/* ── Form ───────────────────────────────────────────────── */}
             <form onSubmit={next} style={{ display:"flex", flexDirection:"column", gap:"18px" }}>
 
@@ -273,26 +413,63 @@ export function SignupPage_recruiter({ go }) {
                   <p style={{ color:"#64748b", fontSize:"14px", marginTop:"4px" }}>Your personal login credentials</p>
                 </div>
 
+                {/* Full Name */}
                 <div className="fu1">
                   <label style={labelStyle}>Full Name</label>
-                  <input name="name" type="text" required placeholder="Jane Doe" value={f.name} onChange={set} className="input-field"/>
+                  <input 
+                    name="name" 
+                    type="text"  
+                    placeholder="Jane Doe" 
+                    value={f.name} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.name ? "error" : ""}`}
+                  />
+                  {fieldErrors.name && touched.name && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.name}
+                    </div>
+                  )}
                 </div>
 
+                {/* Email */}
                 <div className="fu2">
                   <label style={labelStyle}>Work Email</label>
-                  <input name="email" type="email" required placeholder="jane@company.com" value={f.email} onChange={set} className="input-field"/>
+                  <input 
+                    name="email" 
+                    type="email" 
+                    placeholder="jane@company.com" 
+                    value={f.email} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.email ? "error" : ""}`}
+                  />
+                  {fieldErrors.email && touched.email && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.email}
+                    </div>
+                  )}
                 </div>
 
+                {/* Password */}
                 <div className="fu3">
                   <label style={labelStyle}>Password</label>
                   <div style={{ position:"relative" }}>
                     <input
-                      name="password" type={show ? "text" : "password"} required
-                      placeholder="Min. 8 characters" value={f.password} onChange={set}
-                      className="input-field" style={{ paddingRight:"48px" }}
+                      name="password" 
+                      type={show ? "text" : "password"} 
+                      placeholder="Min. 8 characters" 
+                      value={f.password} 
+                      onChange={set}
+                      onBlur={handleBlur}
+                      className={`input-field ${fieldErrors.password ? "error" : ""}`}
+                      style={{ paddingRight:"48px" }}
                     />
                     <button
-                      type="button" onClick={() => setShow(!show)}
+                      type="button" 
+                      onClick={() => setShow(!show)}
                       style={{ position:"absolute", right:"12px", top:"50%", transform:"translateY(-50%)", color:"#64748b", background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", transition:"color .2s" }}
                       onMouseEnter={e => e.currentTarget.style.color="#cbd5e1"}
                       onMouseLeave={e => e.currentTarget.style.color="#64748b"}
@@ -300,7 +477,13 @@ export function SignupPage_recruiter({ go }) {
                       {show ? <EyeOffSm /> : <EyeOnSm />}
                     </button>
                   </div>
-                  {f.password.length > 0 && (
+                  {fieldErrors.password && touched.password && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.password}
+                    </div>
+                  )}
+                  {f.password.length > 0 && !fieldErrors.password && (
                     <div style={{ marginTop:"8px", display:"flex", alignItems:"center", gap:"4px" }}>
                       {[1,2,3,4].map(i => (
                         <div key={i} style={{ flex:1, height:"4px", borderRadius:"9999px", transition:"background .3s", background: f.password.length >= i * 2 ? pwColor : "rgba(255,255,255,0.06)" }}/>
@@ -318,24 +501,67 @@ export function SignupPage_recruiter({ go }) {
                   <p style={{ color:"#64748b", fontSize:"14px", marginTop:"4px" }}>Tell us about your organization</p>
                 </div>
 
+                {/* Company Name */}
                 <div className="fu1">
                   <label style={labelStyle}>Company Name</label>
-                  <input name="company" type="text" required placeholder="Acme Corp" value={f.company} onChange={set} className="input-field"/>
+                  <input 
+                    name="company" 
+                    type="text" 
+                    placeholder="Acme Corp" 
+                    value={f.company} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.company ? "error" : ""}`}
+                  />
+                  {fieldErrors.company && touched.company && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.company}
+                    </div>
+                  )}
                 </div>
 
+                {/* Website */}
                 <div className="fu2">
-                  <label style={labelStyle}>Website</label>
-                  <input name="website" type="url" placeholder="https://yourcompany.com" value={f.website} onChange={set} className="input-field"/>
+                  <label style={labelStyle}>Website (Optional)</label>
+                  <input 
+                    name="website" 
+                    type="url" 
+                    placeholder="https://yourcompany.com" 
+                    value={f.website} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.website ? "error" : ""}`}
+                  />
+                  {fieldErrors.website && touched.website && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.website}
+                    </div>
+                  )}
                 </div>
 
+                {/* Company Size */}
                 <div className="fu3">
                   <label style={labelStyle}>Company Size</label>
-                  <select name="size" required value={f.size} onChange={set} className="input-field">
+                  <select 
+                    name="size" 
+                    value={f.size} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.size ? "error" : ""}`}
+                  >
                     <option value="">Select size</option>
                     {["1–10","11–50","51–200","201–1000","1000+"].map(s => (
                       <option key={s}>{s} employees</option>
                     ))}
                   </select>
+                  {fieldErrors.size && touched.size && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.size}
+                    </div>
+                  )}
                 </div>
               </>}
 
@@ -346,19 +572,47 @@ export function SignupPage_recruiter({ go }) {
                   <p style={{ color:"#64748b", fontSize:"14px", marginTop:"4px" }}>Help us personalize your experience</p>
                 </div>
 
+                {/* Job Title */}
                 <div className="fu1">
                   <label style={labelStyle}>Job Title</label>
-                  <input name="role" type="text" required placeholder="e.g. HR Manager" value={f.role} onChange={set} className="input-field"/>
+                  <input 
+                    name="role" 
+                    type="text" 
+                    placeholder="e.g. HR Manager" 
+                    value={f.role} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.role ? "error" : ""}`}
+                  />
+                  {fieldErrors.role && touched.role && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.role}
+                    </div>
+                  )}
                 </div>
 
+                {/* Department */}
                 <div className="fu2">
                   <label style={labelStyle}>Department</label>
-                  <select name="department" required value={f.department} onChange={set} className="input-field">
+                  <select 
+                    name="department" 
+                    value={f.department} 
+                    onChange={set}
+                    onBlur={handleBlur}
+                    className={`input-field ${fieldErrors.department ? "error" : ""}`}
+                  >
                     <option value="">Select department</option>
                     {["Human Resources","Talent Acquisition","Engineering","Product","Operations","Finance","Marketing"].map(d => (
                       <option key={d}>{d}</option>
                     ))}
                   </select>
+                  {fieldErrors.department && touched.department && (
+                    <div className="error-text">
+                      <ErrorIcon />
+                      {fieldErrors.department}
+                    </div>
+                  )}
                 </div>
 
                 {/* Summary card */}
@@ -378,22 +632,25 @@ export function SignupPage_recruiter({ go }) {
               <div className="fu4" style={{ display:"flex", gap:"12px", paddingTop:"4px" }}>
                 {step > 0 && (
                   <button
-                    type="button" onClick={() => setStep(step - 1)}
-                    style={{ flex:1, padding:"13px", borderRadius:"12px", border:"1px solid #334155", background:"transparent", color:"#cbd5e1", fontSize:"14px", fontWeight:600, cursor:"pointer", transition:"all .2s", fontFamily:"'DM Sans',sans-serif" }}
-                    onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.06)"}
-                    onMouseLeave={e => e.currentTarget.style.background="transparent"}
+                    type="button" 
+                    onClick={() => setStep(step - 1)}
+                    disabled={isAuthenticating}
+                    style={{ flex:1, padding:"13px", borderRadius:"12px", border:"1px solid #334155", background:"transparent", color:"#cbd5e1", fontSize:"14px", fontWeight:600, cursor:isAuthenticating?"not-allowed":"pointer", opacity:isAuthenticating?0.6:1, transition:"all .2s", fontFamily:"'DM Sans',sans-serif" }}
+                    onMouseEnter={e => !isAuthenticating && (e.currentTarget.style.background="rgba(255,255,255,0.06)")}
+                    onMouseLeave={e => !isAuthenticating && (e.currentTarget.style.background="transparent")}
                   >
                     ← Back
                   </button>
                 )}
                 <button
-                  type="submit" disabled={busy}
+                  type="submit" 
+                  disabled={isAuthenticating}
                   className="btn-grad"
-                  style={{ flex:1, padding:"13px", borderRadius:"12px", border:"none", color:"#fff", fontSize:"14px", fontWeight:600, cursor:busy?"not-allowed":"pointer", opacity:busy?0.6:1, display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", transition:"all .2s", fontFamily:"'DM Sans',sans-serif" }}
-                  onMouseEnter={e => { if (!busy) e.currentTarget.style.transform="translateY(-2px)"; }}
+                  style={{ flex:1, padding:"13px", borderRadius:"12px", border:"none", color:"#fff", fontSize:"14px", fontWeight:600, cursor:isAuthenticating?"not-allowed":"pointer", opacity:isAuthenticating?0.6:1, display:"flex", alignItems:"center", justifyContent:"center", gap:"8px", transition:"all .2s", fontFamily:"'DM Sans',sans-serif" }}
+                  onMouseEnter={e => { if (!isAuthenticating) e.currentTarget.style.transform="translateY(-2px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
                 >
-                  {busy ? <><Spinner />Creating...</> : step < 2 ? "Continue →" : "Create Account →"}
+                  {isAuthenticating ? <><Spinner />Creating...</> : step < 2 ? "Continue →" : "Create Account →"}
                 </button>
               </div>
             </form>

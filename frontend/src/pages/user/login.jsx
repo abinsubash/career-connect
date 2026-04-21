@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { userLoginSuccess, userAuthError, userAuthStarting } from "../../redux/userAuthSlice";
+import { authAPI } from "../../api/authAPI";
+
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" width="20" height="20">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -19,16 +23,43 @@ const BriefcaseIcon = () => (
 );
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [focused, setFocused] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
+    setError("");
+    dispatch(userAuthStarting());
+
+    try {
+      const response = await authAPI.userLogin(email, password);
+      
+      // Dispatch to Redux
+      const userData = response.user || { email };
+      dispatch(userLoginSuccess({
+        user: userData,
+        token: response.token,
+      }));
+
+      // Store JWT in localStorage (also saved via Redux hook)
+      localStorage.setItem("token", response.token);
+
+      // Navigate to home
+      navigate("/home");
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || "Login failed. Please try again.";
+      setError(errorMsg);
+      dispatch(userAuthError(errorMsg));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -92,6 +123,13 @@ export default function LoginPage() {
                 <span className="text-slate-400 text-xs font-medium">or sign in with email</span>
                 <div className="flex-1 h-px bg-slate-100" />
               </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-3">

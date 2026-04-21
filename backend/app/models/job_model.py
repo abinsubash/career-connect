@@ -49,10 +49,16 @@ class Job(db.Model):
         back_populates="jobs",
         lazy="select",
     )
+    
+    applications = db.relationship(
+        "Application",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
-    def to_dict(self):
-        return {
+    def to_dict(self, include_applications=False):
+        result = {
             "id":            self.id,
             "recruiter_id":  self.recruiter_id,
             # Basic Info
@@ -77,7 +83,20 @@ class Job(db.Model):
             "is_active":     self.is_active,
             "created_at":    self.created_at.isoformat(),
             "updated_at":    self.updated_at.isoformat(),
+            "applicant_count": len(self.applications) if self.applications else 0,
+            # Recruiter info
+            "recruiter":     {
+                "id": self.recruiter.id,
+                "name": self.recruiter.name,
+                "company_name": self.recruiter.company or self.recruiter.name,
+                "email": self.recruiter.email,
+            } if self.recruiter else None,
         }
+        
+        if include_applications and self.applications:
+            result["applications"] = [app.to_dict() for app in self.applications]
+        
+        return result
 
     def __repr__(self):
         return f"<Job id={self.id} title={self.title!r} recruiter_id={self.recruiter_id}>"

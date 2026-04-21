@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.db import db
 from app.models.user_model import User
 from app.models.otp_model import OTPStore
-from app.models.recruiter_model import Recruiter   # ✅ single import — adjust path if needed
+from app.models.recruiter_model import Recruiter
 from flask_bcrypt import Bcrypt
 from google.auth.transport import requests as grequests
 from google.oauth2 import id_token
@@ -14,6 +14,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     set_access_cookies,
     unset_jwt_cookies,
+    jwt_required,
 )
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
@@ -23,7 +24,7 @@ import re
 import os
 
 # ── Constants ────────────────────────────────────────────────
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")   # ✅ defined once, used everywhere
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 bcrypt = Bcrypt()
 
@@ -335,6 +336,69 @@ def onboarding():
     return jsonify({"message": "Profile completed successfully"}), 200
 
 
+# ── User Profile Operations ───────────────────────────────────
+def get_profile():
+    user_id = get_jwt_identity()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify(user.to_dict()), 200
+
+
+def update_profile():
+    user_id = get_jwt_identity()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # Update allowed fields
+    if "name" in data:
+        user.name = data.get("name", "").strip()
+    if "phone" in data:
+        user.phone = data.get("phone", "").strip()
+    if "headline" in data:
+        user.headline = data.get("headline", "").strip()
+    if "job_title" in data:
+        user.job_title = data.get("job_title", "").strip()
+    if "city" in data:
+        user.city = data.get("city", "").strip()
+    if "state" in data:
+        user.state = data.get("state", "").strip()
+    if "country" in data:
+        user.country = data.get("country", "").strip()
+    if "experience_level" in data:
+        user.experience_level = data.get("experience_level", "").strip()
+    if "skills" in data:
+        user.skills = data.get("skills", "").strip()
+    if "preferred_role" in data:
+        user.preferred_role = data.get("preferred_role", "").strip()
+    if "preferred_location" in data:
+        user.preferred_location = data.get("preferred_location", "").strip()
+    if "expected_salary" in data:
+        user.expected_salary = data.get("expected_salary", "").strip()
+
+    try:
+        db.session.commit()
+        return jsonify({
+            "message": "Profile updated successfully",
+            "user": user.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to update profile: {str(e)}"}), 500
+
+
 # ── Recruiter Auth ────────────────────────────────────────────
 def recruiter_signup():
     data = request.get_json()
@@ -352,14 +416,64 @@ def recruiter_signup():
         return jsonify({"message": "Email already registered"}), 409
 
     hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
-    db.session.add(Recruiter(
+    recruiter = Recruiter(
         name=name, email=email, password=hashed_pw,
         company=data.get("company"), website=data.get("website"),
         size=data.get("size"), role=data.get("role"),
         department=data.get("department"),
-    ))
+    )
+    db.session.add(recruiter)
     db.session.commit()
-    return jsonify({"message": "Recruiter registered successfully"}), 201
+
+    # PyJWT requires identity to be a string for proper JWT encoding
+    token = create_access_token(
+        identity=str(recruiter.id),
+        additional_claims={"role": "recruiter"},
+        expires_delta=timedelta(days=7),
+    )
+
+    resp = jsonify({
+        "message": "Recruiter registered successfully",
+        "token": token,
+        "recruiter": {
+            "id":      recruiter.id,
+            "name":    recruiter.name,
+            "email":   recruiter.email,
+            "company": recruiter.company,
+        },
+    })
+    set_access_cookies(resp, token)
+    return resp, 201
+
+def user_login():
+    data = request.get_json(silent=True) or {}
+    try:
+        email, password = _validate_login(data)
+    except ValueError as exc:
+        return _err(str(exc), 422)
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not bcrypt.check_password_hash(user.password, password):
+        return _err("Incorrect email or password.", 401)
+
+    # PyJWT requires identity to be a string for proper JWT encoding
+    token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": "user"},
+        expires_delta=timedelta(days=7),
+    )
+    resp = jsonify({
+        "message": "Login successful.",
+        "token": token,
+        "user": {
+            "id":    user.id,
+            "name":  user.name,
+            "email": user.email,
+        },
+    })
+    set_access_cookies(resp, token)
+    return resp, 200
+
 
 def login():
     data = request.get_json(silent=True) or {}
@@ -369,9 +483,10 @@ def login():
         return _err(str(exc), 422)
 
     recruiter = Recruiter.query.filter_by(email=email).first()
-    if not recruiter or not bcrypt.check_password_hash(recruiter.password, password):  # ← bcrypt here
+    if not recruiter or not bcrypt.check_password_hash(recruiter.password, password):
         return _err("Incorrect email or password.", 401)
 
+    # PyJWT requires identity to be a string for proper JWT encoding
     token = create_access_token(
         identity=str(recruiter.id),
         additional_claims={"role": "recruiter"},
@@ -379,6 +494,7 @@ def login():
     )
     resp = jsonify({
         "message": "Login successful.",
+        "token": token,
         "recruiter": {
             "id":      recruiter.id,
             "name":    recruiter.name,
@@ -388,6 +504,7 @@ def login():
     })
     set_access_cookies(resp, token)
     return resp, 200
+
 
 def logout():
     resp = jsonify({"message": "Logged out."})

@@ -13,3 +13,11 @@ class Recruiter(db.Model):
     # Role
     role       = db.Column(db.String(100))
     department = db.Column(db.String(100))
+    
+    # ── Relationships ────────────────────────────────────────────────────────
+    jobs = db.relationship(
+        "Job",
+        back_populates="recruiter",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )

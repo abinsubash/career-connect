@@ -664,7 +664,7 @@ function StepSignup({ data, onChange, onNext, onGoogleSuccess }) {
 
       <p className="text-center text-sm text-slate-500">
         Already have an account?{" "}
-        <a href="/login" className="text-blue-600 font-semibold hover:underline">Sign in</a>
+        <a href="/" className="text-blue-600 font-semibold hover:underline">Sign in</a>
       </p>
     </Card>
   );
