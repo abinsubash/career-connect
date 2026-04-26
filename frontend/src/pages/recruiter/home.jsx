@@ -110,8 +110,8 @@ const NAV = [
   { label:"Dashboard",    Icon:GridIcon,  badge:null },
   { label:"Job Listings", Icon:BriefIcon, badge:"12" },
   { label:"Applicants",   Icon:UsersIcon, badge:"47" },
-  { label:"Messages",     Icon:MsgIcon,   badge:"3" },
-  { label:"Settings",     Icon:SettIcon,  badge:null },
+  { label:"Explore",      Icon:UsersIcon, badge:null },
+  { label:"Posts",        Icon:GridIcon,  badge:null },
 ];
 
 const SC = {
@@ -545,8 +545,10 @@ export function RecruiterHome({ go }) {
                     navigate("/recruiter/jobs");
                   } else if (label === "Applicants") {
                     navigate("/recruiter/applicants");
-                  } else if (label === "Analytics") {
-                    navigate("/recruiter/analytics");
+                  } else if (label === "Explore") {
+                    navigate("/recruiter/explore");
+                  } else if (label === "Posts") {
+                    navigate("/recruiter/posts");
                   }
                 }}
                   style={{ display:"flex", alignItems:"center", gap:"10px", padding:"10px 12px", borderRadius:"12px", fontSize:"14px", fontWeight:500, border: active ? "1px solid rgba(56,189,248,0.2)" : "1px solid transparent", background: active ? "rgba(56,189,248,0.08)" : "transparent", color: active ? "#38bdf8" : "#64748b", cursor:"pointer", textAlign:"left", width:"100%", transition:"all .2s", fontFamily:"'DM Sans',sans-serif" }}

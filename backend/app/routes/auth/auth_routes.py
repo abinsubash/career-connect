@@ -9,29 +9,66 @@ from flask_jwt_extended import jwt_required
 auth_bp = Blueprint("auth", __name__)
 
 # ── User routes ──────────────────────────────────────────────
-auth_bp.route("/auth/signup",          methods=["POST"])(register)
-auth_bp.route("/auth/login",           methods=["POST"])(user_login)
-auth_bp.route("/auth/delete_all_users",methods=["GET"])(delete_all_users)
-auth_bp.route("/auth/googleSignup",    methods=["POST"])(google_signup)
-auth_bp.route("/auth/google-callback", methods=["POST"])(google_callback)
-auth_bp.route("/auth/send-otp",        methods=["POST"])(send_otp)
-auth_bp.route("/auth/verify-otp",      methods=["POST"])(verify_otp)
-auth_bp.route("/auth/resend-otp",      methods=["POST"])(resend_otp)
-auth_bp.route("/auth/onboarding",      methods=["POST"])(onboarding)
+@auth_bp.route("/auth/signup", methods=["POST"])
+def route_register():
+    return register()
+
+@auth_bp.route("/auth/login", methods=["POST"])
+def route_user_login():
+    return user_login()
+
+@auth_bp.route("/auth/delete_all_users", methods=["GET"])
+def route_delete_all_users():
+    return delete_all_users()
+
+@auth_bp.route("/auth/googleSignup", methods=["POST"])
+def route_google_signup():
+    return google_signup()
+
+@auth_bp.route("/auth/google-callback", methods=["POST"])
+def route_google_callback():
+    return google_callback()
+
+@auth_bp.route("/auth/send-otp", methods=["POST"])
+def route_send_otp():
+    return send_otp()
+
+@auth_bp.route("/auth/verify-otp", methods=["POST"])
+def route_verify_otp():
+    return verify_otp()
+
+@auth_bp.route("/auth/resend-otp", methods=["POST"])
+def route_resend_otp():
+    return resend_otp()
+
+@auth_bp.route("/auth/onboarding", methods=["POST"])
+def route_onboarding():
+    return onboarding()
 
 # Profile endpoint - handle both GET and PUT on the same route
-def profile_route():
+@auth_bp.route("/auth/profile", methods=["GET", "PUT"])
+@jwt_required()
+def route_profile():
     if request.method == "GET":
         return get_profile()
     elif request.method == "PUT":
         return update_profile()
 
-auth_bp.add_url_rule("/auth/profile", "profile", jwt_required()(profile_route), methods=["GET", "PUT"])
-
 # ── Recruiter routes ─────────────────────────────────────────
-auth_bp.route("/auth/recruiter/signup", methods=["POST"])(recruiter_signup)
-auth_bp.route("/auth/recruiter/login",  methods=["POST"])(login)
-auth_bp.route("/auth/recruiter/logout", methods=["POST"])(logout)
+@auth_bp.route("/auth/recruiter/signup", methods=["POST"])
+def route_recruiter_signup():
+    return recruiter_signup()
 
-# /me is protected — wrap it with jwt_required before registering
-auth_bp.route("/auth/recruiter/me", methods=["GET"])(jwt_required()(me))
+@auth_bp.route("/auth/recruiter/login", methods=["POST"])
+def route_recruiter_login():
+    return login()
+
+@auth_bp.route("/auth/recruiter/logout", methods=["POST"])
+def route_recruiter_logout():
+    return logout()
+
+# /me is protected
+@auth_bp.route("/auth/recruiter/me", methods=["GET"])
+@jwt_required()
+def route_recruiter_me():
+    return me()

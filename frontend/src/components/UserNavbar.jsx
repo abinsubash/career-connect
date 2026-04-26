@@ -48,8 +48,6 @@ const navItems = [
   { label: "Home", icon: HomeIcon, badge: 0 },
   { label: "Jobs", icon: BriefcaseIcon, badge: 0 },
   { label: "Posts", icon: ImageIcon, badge: 0 },
-  { label: "Messages", icon: MessageIcon, badge: 3 },
-  { label: "Alerts", icon: BellIcon, badge: 5 },
 ];
 
 export default function UserNavbar({ currentPage = "Home" }) {

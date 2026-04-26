@@ -95,6 +95,18 @@ const jobAPI = {
     }
   },
 
+  // Get jobs posted by a specific recruiter
+  getUserJobs: async (userId, page = 1, limit = 10) => {
+    try {
+      const response = await axiosInstance.get(`/jobs/user/${userId}`, {
+        params: { page, limit },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { errors: { general: "Failed to fetch user jobs" } };
+    }
+  },
+
   // Apply for a job (with optional resume upload)
   applyForJob: async (jobId, applicationData) => {
     try {

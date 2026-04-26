@@ -14,6 +14,8 @@ import JobsPage from "./pages/user/jobs";
 import ProfilePage from "./pages/user/profile";
 import MyApplicationsPage from "./pages/user/applications";
 import Posts from "./pages/user/posts";
+import UserProfilePage from "./pages/user/userProfilePage";
+import PostsManagementPage from "./pages/user/postsManagementPage";
 
 import { LoginPage_recruiter } from "./pages/recruiter/login";
 import { SignupPage_recruiter } from "./pages/recruiter/signup";
@@ -23,6 +25,8 @@ import AddEditJobPage from "./pages/recruiter/addEditJob";
 import ApplicantsPage from "./pages/recruiter/applicantspage";
 import AllApplicantsPage from "./pages/recruiter/allApplicantsPage";
 import CandidateDetailPage from "./pages/recruiter/candidateDetailPage";
+import RecruiterExplore from "./pages/recruiter/explore";
+import RecruiterPosts from "./pages/recruiter/posts";
 
 function AppContent() {
   const [initialized, setInitialized] = useState(false);
@@ -91,7 +95,9 @@ function AppContent() {
       <Route path="/home"   element={<RequireUserRoute><HomePage /></RequireUserRoute>} />
       <Route path="/jobs"   element={<RequireUserRoute><JobsPage /></RequireUserRoute>} />
       <Route path="/posts"  element={<RequireUserRoute><Posts /></RequireUserRoute>} />
+      <Route path="/posts/management" element={<RequireUserRoute><PostsManagementPage /></RequireUserRoute>} />
       <Route path="/profile" element={<RequireUserRoute><ProfilePage /></RequireUserRoute>} />
+      <Route path="/user-profile/:userId" element={<RequireUserRoute><UserProfilePage /></RequireUserRoute>} />
       <Route path="/applications" element={<RequireUserRoute><MyApplicationsPage /></RequireUserRoute>} />
 
       {/* ── Recruiter Auth (no layout) ────────────────────────────── */}
@@ -108,6 +114,10 @@ function AppContent() {
       <Route path="/recruiter/applicants"             element={<RequireRecruiterRoute><AllApplicantsPage /></RequireRecruiterRoute>} />
       <Route path="/recruiter/jobs/:jobId/applicants" element={<RequireRecruiterRoute><ApplicantsPage /></RequireRecruiterRoute>} />
       <Route path="/recruiter/jobs/:jobId/candidates/:applicationId" element={<RequireRecruiterRoute><CandidateDetailPage /></RequireRecruiterRoute>} />
+
+      {/* Posts & Explore */}
+      <Route path="/recruiter/explore" element={<RequireRecruiterRoute><RecruiterExplore /></RequireRecruiterRoute>} />
+      <Route path="/recruiter/posts"   element={<RequireRecruiterRoute><RecruiterPosts /></RequireRecruiterRoute>} />
     </Routes>
   );
 }

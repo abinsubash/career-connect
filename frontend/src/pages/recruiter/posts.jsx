@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import UserNavbar from "../../components/UserNavbar";
 import postAPI from "../../api/postAPI";
+import { RecruiterLayout } from "../../components/RecruiterLayout";
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const LikeIcon = ({ filled }) => (
@@ -59,7 +59,13 @@ const PlusIcon = () => (
   </svg>
 );
 
-// ── Feed Item Component (Browse All Posts) ──────────────────────────────
+const BackIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+// ── Feed Item Component ──────────────────────────────────────────────────────
 function FeedItem({ post, onUserClick, onLike, onUnlike }) {
   return (
     <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-gray-800 rounded-lg overflow-hidden hover:border-blue-500/30 transition-all">
@@ -130,7 +136,7 @@ function FeedItem({ post, onUserClick, onLike, onUnlike }) {
   );
 }
 
-// ── My Post Item Component (Manage Posts) ────────────────────────────────
+// ── My Post Item Component ────────────────────────────────────────────────────
 function MyPostItem({ post, onEdit, onDelete, onToggleStatus, onLike, onUnlike }) {
   const [editingPostId, setEditingPostId] = useState(null);
   const [editedCaption, setEditedCaption] = useState("");
@@ -274,10 +280,10 @@ function MyPostItem({ post, onEdit, onDelete, onToggleStatus, onLike, onUnlike }
   );
 }
 
-// ── Main Posts Component ────────────────────────────────────────────────────
-export default function Posts() {
-  const user = useSelector((state) => state.userAuth.user);
-  const token = useSelector((state) => state.userAuth.token);
+// ── Main Posts Component ────────────────────────────────────────────────────────
+export default function RecruiterPosts() {
+  const recruiter = useSelector((state) => state.auth.recruiter);
+  const token = useSelector((state) => state.auth.token);
   const navigate = useNavigate();
 
   const [allPosts, setAllPosts] = useState([]);
@@ -315,78 +321,10 @@ export default function Posts() {
 
   const fetchMyPosts = async () => {
     try {
-      const response = await postAPI.getUserPosts(user?.id);
+      const response = await postAPI.getUserPosts(recruiter?.id);
       setMyPosts(response?.user_posts || response?.posts || []);
     } catch (err) {
       console.error("Error fetching my posts:", err);
-    }
-  };
-
-  const handleUserClick = (userId) => {
-    navigate(`/user-profile/${userId}`);
-  };
-
-  const handleLike = async (postId) => {
-    try {
-      const response = await postAPI.likePost(postId);
-      if (response.success) {
-        setAllPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  is_liked_by_me: true,
-                  likes_count: (p.likes_count || 0) + 1,
-                }
-              : p
-          )
-        );
-        setMyPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  is_liked_by_me: true,
-                  likes_count: (p.likes_count || 0) + 1,
-                }
-              : p
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Error liking:", err);
-    }
-  };
-
-  const handleUnlike = async (postId) => {
-    try {
-      const response = await postAPI.unlikePost(postId);
-      if (response.success) {
-        setAllPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  is_liked_by_me: false,
-                  likes_count: Math.max(0, (p.likes_count || 1) - 1),
-                }
-              : p
-          )
-        );
-        setMyPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  is_liked_by_me: false,
-                  likes_count: Math.max(0, (p.likes_count || 1) - 1),
-                }
-              : p
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Error unliking:", err);
     }
   };
 
@@ -468,7 +406,6 @@ export default function Posts() {
   const handleToggleStatus = async (post) => {
     try {
       const newStatus = !post.is_active;
-      console.log(`Toggling post ${post.id} from ${post.is_active} to ${newStatus}`);
       const response = await postAPI.updatePost(post.id, post.caption, newStatus);
       
       if (response.success) {
@@ -488,33 +425,105 @@ export default function Posts() {
     }
   };
 
+  const handleLike = async (postId) => {
+    try {
+      const response = await postAPI.likePost(postId);
+      if (response.success) {
+        setAllPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  is_liked_by_me: true,
+                  likes_count: (p.likes_count || 0) + 1,
+                }
+              : p
+          )
+        );
+        setMyPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  is_liked_by_me: true,
+                  likes_count: (p.likes_count || 0) + 1,
+                }
+              : p
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Error liking:", err);
+    }
+  };
+
+  const handleUnlike = async (postId) => {
+    try {
+      const response = await postAPI.unlikePost(postId);
+      if (response.success) {
+        setAllPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  is_liked_by_me: false,
+                  likes_count: Math.max(0, (p.likes_count || 1) - 1),
+                }
+              : p
+          )
+        );
+        setMyPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  is_liked_by_me: false,
+                  likes_count: Math.max(0, (p.likes_count || 1) - 1),
+                }
+              : p
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Error unliking:", err);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-gray-100">
-        <UserNavbar currentPage="Posts" />
-        <div className="max-w-2xl mx-auto px-4 py-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading posts...</p>
+      <div className="min-h-screen bg-black text-gray-100 p-4">
+        <div className="flex justify-center items-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading posts...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-gray-100" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-        body { font-family: 'DM Sans', sans-serif; }
-      `}</style>
+    <RecruiterLayout>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0, overflowY:"auto" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+          body { font-family: 'DM Sans', sans-serif; }
+        `}</style>
 
-      <UserNavbar currentPage="Posts" />
-
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between flex-col sm:flex-row gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-gray-100 mb-2">Posts</h1>
-            <p className="text-gray-500">Explore and manage posts from the community</p>
+        <div className="max-w-2xl mx-auto px-4 py-8 w-full">
+          {/* Header */}
+          <div className="mb-8 flex items-center justify-between flex-col sm:flex-row gap-4">
+            <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/recruiter/home")}
+              className="text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <BackIcon />
+            </button>
+            <div>
+              <h1 className="text-3xl font-extrabold text-gray-100 mb-2">Posts</h1>
+              <p className="text-gray-500">Explore and manage posts from the community</p>
+            </div>
           </div>
           {token && (
             <button
@@ -567,14 +576,14 @@ export default function Posts() {
                 <FeedItem
                   key={post.id}
                   post={post}
-                  onUserClick={handleUserClick}
+                  onUserClick={() => navigate(`/user-profile/${post.user_id}`)}
                   onLike={handleLike}
                   onUnlike={handleUnlike}
                 />
               ))
             ) : (
               <div className="bg-gray-900 border border-gray-800 rounded-lg p-12 text-center">
-                <p className="text-gray-400 text-lg font-semibold mb-2">No posts yet</p>
+                <p className="text-gray-400 text-lg font-semibold mb-2">No posts available</p>
                 <p className="text-gray-600 text-sm">Be the first to share something!</p>
               </div>
             )}
@@ -706,6 +715,7 @@ export default function Posts() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
+      </div>
+    </RecruiterLayout>
+    );
+  }

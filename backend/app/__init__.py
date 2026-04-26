@@ -89,20 +89,38 @@ def create_app():
     def serve_post_image(filename):
         """Serve uploaded post images"""
         try:
-            uploads_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'posts')
-            filepath = os.path.join(uploads_dir, filename)
+            print(f"\n📸 Serving image: {filename}")
             
-            # Security: ensure the file is within the uploads directory
-            if not os.path.abspath(filepath).startswith(os.path.abspath(uploads_dir)):
+            uploads_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'posts')
+            uploads_dir = os.path.normpath(os.path.abspath(uploads_dir))
+            filepath = os.path.normpath(os.path.abspath(os.path.join(uploads_dir, filename)))
+            
+            print(f"   Path: {filepath}")
+            
+            # Security check
+            uploads_dir_with_sep = uploads_dir + os.sep
+            if not filepath.startswith(uploads_dir_with_sep) and filepath != uploads_dir:
+                print(f"⚠️  Invalid path")
                 return {'error': 'Invalid file path'}, 403
             
             if not os.path.exists(filepath):
-                return {'error': 'File not found'}, 404
+                print(f"⚠️  File not found")
+                return {'error': 'Image not found'}, 404
             
-            return send_file(filepath)
+            # Read and return file
+            with open(filepath, 'rb') as f:
+                data = f.read()
+            
+            print(f"✅ Served {len(data)} bytes")
+            return data, 200, {
+                'Content-Type': 'image/jpeg',
+                'Cache-Control': 'public, max-age=86400'
+            }
+        
         except Exception as e:
-            print(f"DEBUG: Error serving image: {e}")
-            return jsonify({'error': str(e)}), 400
+            import traceback
+            traceback.print_exc()
+            return {'error': str(e)}, 500
 
     # Import models to register them
     from .models.recruiter_model import Recruiter
@@ -110,7 +128,7 @@ def create_app():
     from .models.job_model import Job
     from .models.application_model import Application
     from .models.otp_model import OTPStore
-    from .models.post_model import Post
+    from .models.post_model import Post, PostLike
 
     from .routes.auth.auth_routes import auth_bp
     from .routes.jobs.job_routes import job_routes

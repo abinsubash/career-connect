@@ -459,6 +459,35 @@ def get_all_jobs():
         return jsonify({"errors": {"general": str(e)}}), 500
 
 
+def get_user_jobs(recruiter_id):
+    """Get all active jobs posted by a specific recruiter"""
+    try:
+        page   = request.args.get("page",  1,  type=int)
+        limit  = request.args.get("limit", 10, type=int)
+
+        limit = min(limit, 100)
+        skip  = (page - 1) * limit
+
+        # Get jobs for the specific recruiter
+        query = Job.query.filter_by(recruiter_id=recruiter_id, is_active=True)
+
+        total = query.count()
+        jobs  = query.order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
+
+        return jsonify({
+            "jobs": [job.to_dict() for job in jobs],
+            "pagination": {
+                "total": total,
+                "page":  page,
+                "limit": limit,
+                "pages": (total + limit - 1) // limit,
+            },
+        }), 200
+
+    except Exception as e:
+        return jsonify({"errors": {"general": str(e)}}), 500
+
+
 # ── User Job Applications ─────────────────────────────────────────────
 
 def apply_for_job(job_id):

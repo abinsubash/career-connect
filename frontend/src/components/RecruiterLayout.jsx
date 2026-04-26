@@ -70,9 +70,8 @@ const NAV = [
   { label:"Dashboard",    Icon:GridIcon,  badge:null },
   { label:"Job Listings", Icon:BriefIcon, badge:"12" },
   { label:"Applicants",   Icon:UsersIcon, badge:"47" },
-  { label:"Messages",     Icon:MsgIcon,   badge:"3" },
-  { label:"Analytics",    Icon:ChartIcon, badge:null },
-  { label:"Settings",     Icon:SettIcon,  badge:null },
+  { label:"Explore",      Icon:UsersIcon, badge:null },
+  { label:"Posts",        Icon:GridIcon,  badge:null },
 ];
 
 export function RecruiterLayout({ children }) {
@@ -88,16 +87,14 @@ export function RecruiterLayout({ children }) {
     const pathname = location.pathname;
     if (pathname.includes("/recruiter/home")) {
       setNav("Dashboard");
-    } else if (pathname.includes("applicants")) {
+    } else if (pathname.includes("/recruiter/applicants")) {
       setNav("Applicants");
-    } else if (pathname.includes("/recruiter/jobs") && !pathname.includes("/add")) {
+    } else if (pathname.includes("/recruiter/jobs") && !pathname.includes("/add") && !pathname.includes("/edit")) {
       setNav("Job Listings");
-    } else if (pathname.includes("messages")) {
-      setNav("Messages");
-    } else if (pathname.includes("analytics")) {
-      setNav("Analytics");
-    } else if (pathname.includes("settings")) {
-      setNav("Settings");
+    } else if (pathname.includes("/recruiter/explore")) {
+      setNav("Explore");
+    } else if (pathname.includes("/recruiter/posts")) {
+      setNav("Posts");
     }
   }, [location.pathname]);
 
@@ -155,6 +152,10 @@ export function RecruiterLayout({ children }) {
                     navigate("/recruiter/home");
                   } else if (label === "Applicants") {
                     navigate("/recruiter/applicants");
+                  } else if (label === "Explore") {
+                    navigate("/recruiter/explore");
+                  } else if (label === "Posts") {
+                    navigate("/recruiter/posts");
                   }
                 }}
                   style={{ display:"flex", alignItems:"center", gap:"10px", padding:"10px 12px", borderRadius:"12px", fontSize:"14px", fontWeight:500, border: active ? "1px solid rgba(56,189,248,0.2)" : "1px solid transparent", background: active ? "rgba(56,189,248,0.08)" : "transparent", color: active ? "#38bdf8" : "#64748b", cursor:"pointer", textAlign:"left", width:"100%", transition:"all .2s", fontFamily:"'DM Sans',sans-serif" }}

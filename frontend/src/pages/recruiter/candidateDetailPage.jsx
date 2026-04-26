@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import styled, { keyframes, css } from "styled-components";
 import jobAPI from "../../api/jobAPI";
+import postAPI from "../../api/postAPI";
 import { RecruiterLayout } from "../../components/RecruiterLayout";
 
 // ── Animations ────────────────────────────────────────────────────────────
@@ -359,6 +360,8 @@ const CandidateDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState(null);
+  const [userPosts, setUserPosts] = useState([]);
+  const [userJobs, setUserJobs] = useState([]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -379,6 +382,20 @@ const CandidateDetailPage = () => {
       const app = appRes.applications?.find(a => a.id === parseInt(applicationId));
       if (app) {
         setApplication(app);
+        
+        // Fetch user's posts and jobs
+        if (app.user?.id) {
+          try {
+            const [postsRes, jobsRes] = await Promise.all([
+              postAPI.getUserPosts(app.user.id),
+              jobAPI.getUserJobs(app.user.id),
+            ]);
+            setUserPosts(postsRes?.data || []);
+            setUserJobs(jobsRes?.jobs || []);
+          } catch (err) {
+            console.error("Error fetching user posts/jobs:", err);
+          }
+        }
       } else {
         showToast("Application not found", "error");
       }
@@ -617,6 +634,109 @@ const CandidateDetailPage = () => {
                 <Section>
                   <SectionTitle>Cover Letter</SectionTitle>
                   <CLBox>{application.cover_letter}</CLBox>
+                </Section>
+              )}
+
+              {/* Posts Section */}
+              {userPosts && userPosts.length > 0 && (
+                <Section>
+                  <SectionTitle>📸 Posts ({userPosts.length})</SectionTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" }}>
+                    {userPosts.slice(0, 6).map((post) => (
+                      <div
+                        key={post.id}
+                        style={{
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                          background: "#0f172a",
+                          border: "1px solid #1e293b",
+                          aspectRatio: "1/1",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                        }}
+                      >
+                        {post.image_url ? (
+                          <img
+                            src={post.image_url}
+                            alt="Post"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: "12px", color: "#475569" }}>No image</span>
+                        )}
+                        {post.caption && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
+                              color: "#e2e8f0",
+                              padding: "8px",
+                              fontSize: "10px",
+                              maxHeight: "40%",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {post.caption}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {userPosts.length >6 && (
+                    <div style={{ marginTop: "12px", fontSize: "12px", color: "#475569" }}>
+                      +{userPosts.length - 6} more posts
+                    </div>
+                  )}
+                </Section>
+              )}
+
+              {/* Jobs Posted Section */}
+              {userJobs && userJobs.length > 0 && (
+                <Section>
+                  <SectionTitle>💼 Jobs Posted ({userJobs.length})</SectionTitle>
+                  <div style={{ display: "grid", gap: "12px" }}>
+                    {userJobs.slice(0, 3).map((job) => (
+                      <div
+                        key={job.id}
+                        style={{
+                          padding: "12px",
+                          background: "rgba(15, 23, 42, 0.6)",
+                          border: "1px solid #1e293b",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, color: "#e2e8f0", marginBottom: "4px" }}>
+                          {job.title}
+                        </div>
+                        <div style={{ color: "#64748b", fontSize: "11px", marginBottom: "4px" }}>
+                          {job.type} • {job.location_type}
+                        </div>
+                        {job.salary_min && (
+                          <div style={{ color: "#06b6d4", fontSize: "11px" }}>
+                            ${job.salary_min?.toLocaleString()} - ${job.salary_max?.toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {userJobs.length > 3 && (
+                    <div style={{ marginTop: "12px", fontSize: "12px", color: "#475569" }}>
+                      +{userJobs.length - 3} more jobs
+                    </div>
+                  )}
                 </Section>
               )}
 
