@@ -60,7 +60,9 @@ const PlusIcon = () => (
 );
 
 // ── Feed Item Component (Browse All Posts) ──────────────────────────────
-function FeedItem({ post, onUserClick, onLike, onUnlike }) {
+function FeedItem({ post, onUserClick, onLike, onUnlike, currentUserId }) {
+  const isLikedByMe = post.liked_by && post.liked_by.includes(currentUserId);
+  
   return (
     <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-gray-800 rounded-lg overflow-hidden hover:border-blue-500/30 transition-all">
       {/* Header */}
@@ -106,24 +108,45 @@ function FeedItem({ post, onUserClick, onLike, onUnlike }) {
       )}
 
       {/* Likes Section */}
-      <div className="px-4 py-2 border-b border-gray-800">
-        <p className="text-xs text-gray-400">
-          {post.likes_count === 0 ? "No likes yet" : `${post.likes_count} ${post.likes_count === 1 ? "like" : "likes"}`}
-        </p>
+      <div className="px-4 py-3 border-b border-gray-800">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-gray-400">
+            {post.likes_count === 0 ? "No likes yet" : `${post.likes_count} ${post.likes_count === 1 ? "like" : "likes"}`}
+          </p>
+        </div>
+        
+        {/* Liked By Users */}
+        {post.liked_by && post.liked_by.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {post.liked_by.slice(0, 5).map((userId) => (
+              <button
+                key={userId}
+                onClick={() => onUserClick(userId)}
+                className="w-6 h-6 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-transform"
+                title={`User: ${userId}`}
+              >
+                ❤️
+              </button>
+            ))}
+            {post.liked_by.length > 5 && (
+              <span className="text-xs text-gray-400">+{post.liked_by.length - 5}</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Actions */}
+      {/* Actions - Only Like Button */}
       <div className="px-4 py-3 flex gap-2">
         <button
-          onClick={() => (post.is_liked_by_me ? onUnlike(post.id) : onLike(post.id))}
+          onClick={() => (isLikedByMe ? onUnlike(post.id) : onLike(post.id))}
           className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${
-            post.is_liked_by_me
-              ? "bg-red-500/20 text-red-400"
-              : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+            isLikedByMe
+              ? "bg-red-500/20 text-red-400 border border-red-500/50"
+              : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700"
           }`}
         >
-          <LikeIcon filled={post.is_liked_by_me} />
-          {post.is_liked_by_me ? "Unlike" : "Like"}
+          <LikeIcon filled={isLikedByMe} />
+          {isLikedByMe ? "Unlike" : "Like"}
         </button>
       </div>
     </div>
@@ -335,8 +358,8 @@ export default function Posts() {
             p.id === postId
               ? {
                   ...p,
-                  is_liked_by_me: true,
-                  likes_count: (p.likes_count || 0) + 1,
+                  likes_count: response.likes_count,
+                  liked_by: response.liked_by || [],
                 }
               : p
           )
@@ -346,8 +369,8 @@ export default function Posts() {
             p.id === postId
               ? {
                   ...p,
-                  is_liked_by_me: true,
-                  likes_count: (p.likes_count || 0) + 1,
+                  likes_count: response.likes_count,
+                  liked_by: response.liked_by || [],
                 }
               : p
           )
@@ -367,8 +390,8 @@ export default function Posts() {
             p.id === postId
               ? {
                   ...p,
-                  is_liked_by_me: false,
-                  likes_count: Math.max(0, (p.likes_count || 1) - 1),
+                  likes_count: response.likes_count,
+                  liked_by: response.liked_by || [],
                 }
               : p
           )
@@ -378,8 +401,8 @@ export default function Posts() {
             p.id === postId
               ? {
                   ...p,
-                  is_liked_by_me: false,
-                  likes_count: Math.max(0, (p.likes_count || 1) - 1),
+                  likes_count: response.likes_count,
+                  liked_by: response.liked_by || [],
                 }
               : p
           )
@@ -570,6 +593,7 @@ export default function Posts() {
                   onUserClick={handleUserClick}
                   onLike={handleLike}
                   onUnlike={handleUnlike}
+                  currentUserId={user?.id}
                 />
               ))
             ) : (
@@ -653,7 +677,7 @@ export default function Posts() {
                   <label className="border-2 border-dashed border-gray-700 hover:border-blue-500/50 rounded-lg p-8 text-center cursor-pointer block transition-colors">
                     <UploadIcon />
                     <p className="text-gray-300 font-semibold text-sm mt-2">Click to upload image</p>
-                    <p className="text-gray-500 text-xs mt-1">PNG, JPG, GIF • Max 5MB</p>
+                    <p className="text-gray-500 text-xs mt-1">PNG, JPG, GIF • Max 1MB</p>
                     <input
                       type="file"
                       accept="image/*"

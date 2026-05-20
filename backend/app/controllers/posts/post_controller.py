@@ -27,8 +27,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # File configuration
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-MIN_FILE_SIZE = 10 * 1024  # 10KB minimum
+MAX_FILE_SIZE = 1 * 1024 * 1024  # 1MB
+MIN_FILE_SIZE = 0  # No minimum file size
 MAX_IMAGE_DIMENSION = 4000  # 4000px max width/height
 MIN_IMAGE_DIMENSION = 100  # 100px minimum
 
@@ -50,10 +50,7 @@ def validate_image(file):
         file.seek(0)
         
         if file_size > MAX_FILE_SIZE:
-            errors.append(f"File size too large ({file_size/1024/1024:.1f}MB). Maximum allowed: 5MB")
-        
-        if file_size < MIN_FILE_SIZE:
-            errors.append(f"File size too small. Minimum required: 10KB")
+            errors.append(f"File size too large ({file_size/1024/1024:.1f}MB). Maximum allowed: 1MB")
         
         # Check image dimensions and format
         try:
@@ -507,7 +504,8 @@ class PostController:
             return {
                 'success': True,
                 'message': 'Post liked successfully',
-                'likes_count': post.likes_count
+                'likes_count': post.likes_count,
+                'liked_by': [like.user_id for like in post.likes]
             }, 200
         
         except Exception as e:
@@ -539,7 +537,8 @@ class PostController:
             return {
                 'success': True,
                 'message': 'Post unliked successfully',
-                'likes_count': post.likes_count
+                'likes_count': post.likes_count,
+                'liked_by': [like.user_id for like in post.likes]
             }, 200
         
         except Exception as e:

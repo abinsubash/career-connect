@@ -62,15 +62,15 @@ export default function UserProfilePage() {
       setLoading(true);
       setError(null);
 
-      // For now, fetch posts and jobs. UserInfo would come from a dedicated endpoint
-      const [postsRes, jobsRes] = await Promise.all([
-        postAPI.getUserPosts(userId),
-        jobAPI.getUserJobs(userId),
-      ]);
+      // Fetch posts for this user
+      const postsRes = await postAPI.getUserPosts(userId);
+      
+      // Extract posts array from response
+      const userPostsArray = postsRes?.data || postsRes?.posts || [];
 
       // Create basic user info from posts (fallback)
-      if (postsRes?.data && postsRes.data.length > 0) {
-        const firstPost = postsRes.data[0];
+      if (userPostsArray && userPostsArray.length > 0) {
+        const firstPost = userPostsArray[0];
         setUserInfo({
           id: userId,
           name: firstPost.user?.name || "User",
@@ -88,8 +88,7 @@ export default function UserProfilePage() {
         });
       }
 
-      setUserPosts(postsRes?.data || []);
-      setUserJobs(jobsRes?.data || []);
+      setUserPosts(userPostsArray);
     } catch (err) {
       console.error("Error fetching user data:", err);
       setError(err.message || "Failed to load user profile");
@@ -116,7 +115,9 @@ export default function UserProfilePage() {
     }
   };
 
-  const isOwnProfile = currentUser?.id === parseInt(userId);
+  // Check if viewing own profile - improved comparison
+  const isOwnProfile = currentUser && currentUser.id && 
+    String(currentUser.id) === String(userId);
 
   if (loading) {
     return (

@@ -27,6 +27,8 @@ import AllApplicantsPage from "./pages/recruiter/allApplicantsPage";
 import CandidateDetailPage from "./pages/recruiter/candidateDetailPage";
 import RecruiterExplore from "./pages/recruiter/explore";
 import RecruiterPosts from "./pages/recruiter/posts";
+import RecruiterProfilePage from "./pages/recruiter/recruiterProfilePage";
+import NotFoundPage from "./pages/notFound";
 
 function AppContent() {
   const [initialized, setInitialized] = useState(false);
@@ -98,6 +100,7 @@ function AppContent() {
       <Route path="/posts/management" element={<RequireUserRoute><PostsManagementPage /></RequireUserRoute>} />
       <Route path="/profile" element={<RequireUserRoute><ProfilePage /></RequireUserRoute>} />
       <Route path="/user-profile/:userId" element={<RequireUserRoute><UserProfilePage /></RequireUserRoute>} />
+      <Route path="/recruiter-profile/:recruiterId" element={<RecruiterProfilePage />} />
       <Route path="/applications" element={<RequireUserRoute><MyApplicationsPage /></RequireUserRoute>} />
 
       {/* ── Recruiter Auth (no layout) ────────────────────────────── */}
@@ -118,6 +121,9 @@ function AppContent() {
       {/* Posts & Explore */}
       <Route path="/recruiter/explore" element={<RequireRecruiterRoute><RecruiterExplore /></RequireRecruiterRoute>} />
       <Route path="/recruiter/posts"   element={<RequireRecruiterRoute><RecruiterPosts /></RequireRecruiterRoute>} />
+
+      {/* ── Catch-all: 404 Not Found ─────────────────────────────── */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

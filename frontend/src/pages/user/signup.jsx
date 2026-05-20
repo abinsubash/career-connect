@@ -85,6 +85,31 @@ const GENDERS = ["Prefer not to say","Male","Female","Non-binary","Other"];
 const STEP_LABELS = ["Sign Up","Personal","Professional","Preferences"];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// VALIDATION FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+const validateEmail = (email) => {
+  if (!email) return { valid: false, message: "Email is required" };
+  if (!email.endsWith("@gmail.com")) {
+    return { valid: false, message: "Only @gmail.com emails are allowed" };
+  }
+  return { valid: true, message: "" };
+};
+
+const validatePhone = (phone) => {
+  if (!phone) return { valid: false, message: "Phone number is required" };
+  // Remove spaces, hyphens, and +91 prefix
+  const cleaned = phone.replace(/[\s\-+]/g, "").replace(/^91/, "");
+  if (!/^\d{10}$/.test(cleaned)) {
+    return { valid: false, message: "Phone must be 10 digits (Indian format)" };
+  }
+  const firstDigit = parseInt(cleaned[0]);
+  if (firstDigit < 6 || firstDigit > 9) {
+    return { valid: false, message: "First digit must be 6-9" };
+  }
+  return { valid: true, message: "" };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FORM PRIMITIVES
 // ─────────────────────────────────────────────────────────────────────────────
 function Label({ children, htmlFor }) {
@@ -113,13 +138,13 @@ function InputWrap({ focused, error, success, children, className = "" }) {
 function TextInput({
   id, label, name, value, onChange, placeholder,
   type = "text", iconPath, required, autoComplete, readOnly,
-  rightSlot,
+  rightSlot, error,
 }) {
   const [focused, setFocused] = useState(false);
   return (
     <div>
       {label && <Label htmlFor={id || name}>{label}</Label>}
-      <InputWrap focused={focused}>
+      <InputWrap focused={focused} error={!!error}>
         {iconPath && (
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <Icon d={iconPath}/>
@@ -143,6 +168,7 @@ function TextInput({
           <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightSlot}</div>
         )}
       </InputWrap>
+      {error && <p className="text-xs text-red-500 mt-1 ml-1" role="alert">{error}</p>}
     </div>
   );
 }
@@ -474,9 +500,12 @@ function StepSignup({ data, onChange, onNext, onGoogleSuccess }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError]             = useState("");
 
+  const emailValidation = validateEmail(data.email);
+  const phoneValidation = validatePhone(data.phone);
+  
   const pwMatch    = data.confirm.length > 0 && data.password === data.confirm;
   const pwMismatch = data.confirm.length > 0 && data.password !== data.confirm;
-  const canSubmit  = !pwMismatch && agreed && data.firstName && data.email && data.password && data.confirm;
+  const canSubmit  = !pwMismatch && agreed && data.firstName && emailValidation.valid && phoneValidation.valid && data.password && data.confirm;
 
   // ── Google OAuth login ──────────────────────────────────────────────────
   const googleLogin = useGoogleLogin({
@@ -573,8 +602,9 @@ function StepSignup({ data, onChange, onNext, onGoogleSuccess }) {
         {/* Email */}
         <TextInput
           label="Email Address" name="email" value={data.email} onChange={onChange}
-          type="email" placeholder="you@email.com" required autoComplete="email"
+          type="email" placeholder="you@gmail.com" required autoComplete="email"
           iconPath="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6"
+          error={data.email && !emailValidation.valid ? emailValidation.message : ""}
         />
 
         {/* Phone */}
@@ -582,6 +612,7 @@ function StepSignup({ data, onChange, onNext, onGoogleSuccess }) {
           label="Phone Number" name="phone" value={data.phone} onChange={onChange}
           type="tel" placeholder="+91 98765 43210" autoComplete="tel"
           iconPath="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+          error={data.phone && !phoneValidation.valid ? phoneValidation.message : ""}
         />
 
         {/* Password */}

@@ -12,30 +12,6 @@ const HeartIcon = ({ filled = false, cls = "w-5 h-5" }) => (
   </svg>
 );
 
-const CommentIcon = ({ cls = "w-5 h-5" }) => (
-  <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-);
-
-const SendIcon = ({ cls = "w-5 h-5" }) => (
-  <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-  </svg>
-);
-
-const BookmarkIcon = ({ cls = "w-5 h-5" }) => (
-  <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-  </svg>
-);
-
-const MoreIcon = ({ cls = "w-5 h-5" }) => (
-  <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
-  </svg>
-);
-
 const BriefcaseIcon = ({ cls = "w-4 h-4" }) => (
   <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
@@ -50,10 +26,8 @@ const MapPinIcon = ({ cls = "w-4 h-4" }) => (
 
 // ── Feed Item Component ──────────────────────────────────────────────────────
 function FeedItem({ item, type, currentUserID, onPostLike, onPostUnlike, onUserClick }) {
-  const [isLiked, setIsLiked] = useState(item.isLikedByMe || false);
+  const [isLiked, setIsLiked] = useState(item.is_liked_by_me || false);
   const [likeCount, setLikeCount] = useState(item.likes_count || 0);
-  const [comment, setComment] = useState("");
-  const [showComments, setShowComments] = useState(false);
 
   const handleLike = async () => {
     if (type === "post") {
@@ -93,9 +67,6 @@ function FeedItem({ item, type, currentUserID, onPostLike, onPostUnlike, onUserC
               </p>
             </div>
           </button>
-          <button className="text-gray-500 hover:text-gray-300 transition-colors">
-            <MoreIcon cls="w-5 h-5" />
-          </button>
         </div>
 
         {/* Post Image */}
@@ -118,68 +89,33 @@ function FeedItem({ item, type, currentUserID, onPostLike, onPostUnlike, onUserC
           <div className="flex items-center gap-4 mb-3">
             <button 
               onClick={handleLike}
-              className={`transition-colors ${isLiked ? "text-red-500" : "text-gray-500 hover:text-gray-300"}`}
+              className={`transition-colors flex items-center gap-2 text-sm font-semibold ${
+                isLiked 
+                  ? "text-red-500" 
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
             >
-              <HeartIcon filled={isLiked} />
-            </button>
-            <button 
-              onClick={() => setShowComments(!showComments)}
-              className="text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              <CommentIcon />
-            </button>
-            <button className="text-gray-500 hover:text-gray-300 transition-colors">
-              <SendIcon />
-            </button>
-            <button className="ml-auto text-gray-500 hover:text-gray-300 transition-colors">
-              <BookmarkIcon />
+              <HeartIcon filled={isLiked} cls="w-5 h-5" />
+              {likeCount === 0 ? "Like" : likeCount === 1 ? "1 Like" : `${likeCount} Likes`}
             </button>
           </div>
 
           {/* Like Count */}
-          <p className="text-sm font-semibold text-gray-100 mb-2">
-            {likeCount === 0 ? "No likes yet" : `${likeCount} ${likeCount === 1 ? "like" : "likes"}`}
-          </p>
+          {likeCount > 0 && (
+            <p className="text-xs text-gray-400">
+              {isLiked ? "You liked this post" : `${likeCount} ${likeCount === 1 ? "person likes" : "people like"} this`}
+            </p>
+          )}
         </div>
 
         {/* Post Caption */}
         {item.caption && (
-          <div className="px-4 py-3 border-b border-gray-800">
+          <div className="px-4 py-3">
             <p className="text-sm text-gray-300">
-              <span className="font-semibold text-gray-100">{item.user?.name} </span>
-              {item.caption}
+              <span className="font-semibold text-gray-100">{item.user?.name}</span> {item.caption}
             </p>
           </div>
         )}
-
-        {/* View Comments */}
-        {showComments && (
-          <div className="px-4 py-3 border-b border-gray-800 bg-gray-800/30">
-            <p className="text-xs text-gray-500 mb-3">Comments (coming soon)</p>
-            <div className="text-sm text-gray-400">
-              <p>Comments feature will be available soon</p>
-            </div>
-          </div>
-        )}
-
-        {/* Add Comment */}
-        <div className="px-4 py-3 border-t border-gray-800">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Add a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="flex-1 bg-gray-800 text-gray-100 text-sm px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500 placeholder-gray-600"
-            />
-            <button 
-              disabled={!comment.trim()}
-              className="text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <SendIcon cls="w-4 h-4" />
-            </button>
-          </div>
-        </div>
       </div>
     );
   }
@@ -190,14 +126,25 @@ function FeedItem({ item, type, currentUserID, onPostLike, onPostUnlike, onUserC
         {/* Job Header */}
         <div className="px-4 py-4 border-b border-gray-800">
           <div className="flex items-start gap-3 mb-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold">
-              {item.title?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-100 text-lg">{item.title}</h3>
-              <p className="text-gray-400 text-sm">Posted recently</p>
+            <button
+              onClick={() => onUserClick(item.recruiter_id, 'recruiter')}
+              className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 hover:opacity-80 transition-opacity"
+            >
+              {item.recruiter?.name?.charAt(0).toUpperCase() || "R"}
+            </button>
+            <div className="flex-1">
+              <button
+                onClick={() => onUserClick(item.recruiter_id, 'recruiter')}
+                className="font-bold text-gray-100 text-lg hover:text-blue-400 transition-colors text-left"
+              >
+                {item.recruiter?.name || "Recruiter"}
+              </button>
+              <p className="text-gray-500 text-sm">{item.recruiter?.company || "Company"}</p>
             </div>
           </div>
+          <h3 className="font-bold text-gray-100 text-lg mb-1">{item.title}</h3>
+          <p className="text-gray-400 text-sm">{item.department}</p>
+        </div>
 
           {/* Job Company & Location */}
           <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
@@ -240,15 +187,11 @@ function FeedItem({ item, type, currentUserID, onPostLike, onPostUnlike, onUserC
               </div>
             </div>
           )}
-        </div>
 
         {/* Job Footer */}
         <div className="px-4 py-3 flex items-center gap-2">
           <button className="flex-1 bg-gradient-to-r from-blue-600 to-violet-600 text-white font-semibold py-2 rounded-lg hover:opacity-90 transition-opacity">
             Apply Now
-          </button>
-          <button className="text-gray-500 hover:text-gray-300 transition-colors p-2 hover:bg-gray-800 rounded-lg">
-            <BookmarkIcon />
           </button>
         </div>
       </div>
@@ -270,8 +213,12 @@ export default function UserHome() {
     fetchFeed();
   }, []);
 
-  const handleUserClick = (userId) => {
-    navigate(`/user-profile/${userId}`);
+  const handleUserClick = (userId, userType = 'user') => {
+    if (userType === 'recruiter') {
+      navigate(`/recruiter-profile/${userId}`);
+    } else {
+      navigate(`/user-profile/${userId}`);
+    }
   };
 
   const fetchFeed = async () => {
@@ -291,7 +238,8 @@ export default function UserHome() {
         .map(post => ({
           ...post,
           type: 'post',
-          timestamp: new Date(post.created_at).getTime()
+          timestamp: new Date(post.created_at).getTime(),
+          is_liked_by_me: post.liked_by?.includes(user?.id) || false,
         }));
 
       const jobs = (jobsRes.jobs || []).map(job => ({

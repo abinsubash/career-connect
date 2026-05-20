@@ -18,7 +18,7 @@ class Post(db.Model):
     user = db.relationship('User', backref='posts')
     likes = db.relationship('PostLike', backref='post', cascade='all, delete-orphan')
 
-    def to_dict(self, include_likes=False):
+    def to_dict(self, include_likes=True):
         data = {
             'id': self.id,
             'user_id': self.user_id,
